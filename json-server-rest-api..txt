@@ -1,0 +1,107 @@
+1. vmesnik
+interface Stik {
+  id?: number;
+  ime: string;
+  priimek: string;
+  telefon: string;
+}
+
+2. App.tsx
+import { useState, useEffect } from 'react';
+
+function App() {
+  const [stiki, setStiki] = useState<Stik[]>([]);
+  const [stran, setStran] = useState<'seznam' | 'dodaj'>('seznam');
+
+  // 1. Pridobivanje podatkov iz json-serverja (useEffect)
+  useEffect(() => {
+    fetch('http://localhost:3000/stiki')
+      .then(res => res.json())
+      .then(data => setStiki(data));
+  }, []);
+
+  // 2. Funkcija za dodajanje novega stika (Dvigovanje stanja)
+  const dodajStik = (novStik: Stik) => {
+    fetch('http://localhost:3000/stiki', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(novStik)
+    })
+    .then(res => res.json())
+    .then(shranjenStik => {
+      setStiki([...stiki, shranjenStik]); // Posodobi lokalno stanje
+      setStran('seznam'); // Preklopi nazaj na seznam
+    });
+  };
+
+  return (
+    <div className="container">
+      <h1>E-Imenik</h1>
+      <nav>
+        <button onClick={() => setStran('seznam')}>Vsi stiki</button>
+        <button onClick={() => setStran('dodaj')}>Dodaj nov stik</button>
+      </nav>
+
+      <hr />
+
+      {/* POGOJNO UPODABLJANJE (Namesto Routerja) */}
+      {stran === 'seznam' ? (
+        <Seznam stiki={stiki} />
+      ) : (
+        <Obrazec onDodaj={dodajStik} />
+      )}
+    </div>
+  );
+}
+
+3. Seznam.tsx
+interface SeznamProps {
+  stiki: Stik[];
+}
+
+function Seznam({ stiki }: SeznamProps) {
+  return (
+    <div>
+      <h2>Seznam vseh stikov</h2>
+      {stiki.length === 0 ? <p>Ni stikov.</p> : (
+        <ul>
+          {stiki.map(s => (
+            <li key={s.id}>
+              <strong>{s.ime} {s.priimek}</strong>: {s.telefon}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+4. Obrazec.tsx
+interface ObrazecProps {
+  onDodaj: (stik: Stik) => void;
+}
+
+function Obrazec({ onDodaj }: ObrazecProps) {
+  const [ime, setIme] = useState('');
+  const [priimek, setPriimek] = useState('');
+  const [telefon, setTelefon] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ime || !priimek || !telefon) return alert("Izpolni vsa polja!");
+    
+    onDodaj({ ime, priimek, telefon }); // Pokliče funkcijo v App.tsx
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h2>Dodaj nov stik</h2>
+      <input placeholder="Ime" value={ime} onChange={e => setIme(e.target.value)} />
+      <input placeholder="Priimek" value={priimek} onChange={e => setPriimek(e.target.value)} />
+      <input placeholder="Telefon" value={telefon} onChange={e => setTelefon(e.target.value)} />
+      <button type="submit">Shrani</button>
+    </form>
+  );
+}
+
+

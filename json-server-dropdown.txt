@@ -1,0 +1,103 @@
+1. Interface
+interface Recept {
+  id?: number;
+  naslov: string;
+  vrsta: string; // npr. Zajtrk, Kosilo, Večerja
+  opis: string;
+  sestavine: string;
+  navodila: string;
+}
+
+2. App.tsx
+import { useState, useEffect } from 'react';
+
+function App() {
+  const [recepti, setRecepti] = useState<Recept[]>([]);
+  const [stran, setStran] = useState<'seznam' | 'dodaj' | 'podrobnosti'>('seznam');
+  const [izbranRecept, setIzbranRecept] = useState<Recept | null>(null);
+
+  // Pridobi recepte iz json-serverja
+  useEffect(() => {
+    fetch('http://localhost:3000/recepti')
+      .then(res => res.json())
+      .then(data => setRecepti(data));
+  }, []);
+
+  // Funkcija za dodajanje
+  const dodajRecept = (nov: Recept) => {
+    fetch('http://localhost:3000/recepti', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(nov)
+    })
+    .then(res => res.json())
+    .then(podatek => {
+      setRecepti([...recepti, podatek]);
+      setStran('seznam');
+    });
+  };
+
+  return (
+    <div>
+      <nav>
+        <button onClick={() => setStran('seznam')}>Domov</button>
+        <button onClick={() => setStran('dodaj')}>Dodaj Recept</button>
+      </nav>
+
+      {/* Navigacija brez Routerja */}
+      {stran === 'seznam' && (
+        <Seznam 
+          recepti={recepti} 
+          onPoglej={(r) => { setIzbranRecept(r); setStran('podrobnosti'); }} 
+        />
+      )}
+
+      {stran === 'dodaj' && <Forma onShrani={dodajRecept} />}
+
+      {stran === 'podrobnosti' && izbranRecept && (
+        <Podrobnosti recept={izbranRecept} onNazaj={() => setStran('seznam')} />
+      )}
+    </div>
+  );
+}
+
+3. Froma.tsx
+function Forma({ onShrani }: { onShrani: (r: Recept) => void }) {
+  const [naslov, setNaslov] = useState('');
+  const [vrsta, setVrsta] = useState('Zajtrk'); // Privzeta vrednost
+  const [opis, setOpis] = useState('');
+
+  return (
+    <form onSubmit={(e) => {
+      e.preventDefault();
+      onShrani({ naslov, vrsta, opis, sestavine: "...", navodila: "..." });
+    }}>
+      <input placeholder="Naslov" onChange={e => setNaslov(e.target.value)} />
+      
+      {/* DROP DOWN SEZNAM */}
+      <select value={vrsta} onChange={e => setVrsta(e.target.value)}>
+        <option value="Zajtrk">Zajtrk</option>
+        <option value="Kosilo">Kosilo</option>
+        <option value="Večerja">Večerja</option>
+      </select>
+
+      <textarea placeholder="Opis" onChange={e => setOpis(e.target.value)} />
+      <button type="submit">Shrani</button>
+    </form>
+  );
+}
+
+4.Podrobnosti.tsx
+
+function Podrobnosti({ recept, onNazaj }: { recept: Recept, onNazaj: () => void }) {
+  return (
+    <div>
+      <button onClick={onNazaj}>Nazaj</button>
+      <h1>{recept.naslov} ({recept.vrsta})</h1>
+      <p><strong>Opis:</strong> {recept.opis}</p>
+      <p><strong>Sestavine:</strong> {recept.sestavine}</p>
+      <p><strong>Navodila:</strong> {recept.navodila}</p>
+    </div>
+  );
+}
+
